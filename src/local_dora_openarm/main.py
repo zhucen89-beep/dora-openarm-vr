@@ -55,8 +55,6 @@ def _step_towards(
         -max_step,
         max_step,
     )
-    # Gripper has different units (meters) and is not part of arm alignment.
-    command[-1] = target[-1]
     return command
 
 
@@ -94,9 +92,14 @@ def _align(
     target = state.startup_target
     assert target is not None
 
+    # The gripper must always follow the current trigger target. Only the
+    # first seven arm joints use the captured target during startup alignment.
+    state.align_target[-1] = live_target[-1]
+    
     # Prefer measured motor positions when deciding that alignment is complete.
     actual_error = float(np.max(np.abs(target[:7] - current_position[:7])))
     if actual_error <= threshold:
+        arm.send_position(state.align_target)
         return True
 
     now = time.monotonic()
